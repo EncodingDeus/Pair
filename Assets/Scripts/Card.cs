@@ -5,6 +5,9 @@ using UnityEngine;
 
 public class Card : MonoBehaviour
 {
+    private readonly string OpenStateName = "Open";
+    private readonly string CompleteStateName = "Complete";
+
     private readonly int OpenParam = Animator.StringToHash("Open");
     private readonly int CloseParam = Animator.StringToHash("Close");
     private readonly int CompleteParam = Animator.StringToHash("Complete");
@@ -24,6 +27,21 @@ public class Card : MonoBehaviour
     {
         _animator = GetComponent<Animator>();
     }
+
+    public bool IsOpened()
+    {
+        var state = _animator.GetCurrentAnimatorStateInfo(0);
+        var isName = state.IsName(OpenStateName);
+        return (isName && state.normalizedTime >= 1);
+    }
+
+    public bool IsComplete()
+    {
+        var state = _animator.GetCurrentAnimatorStateInfo(0);
+
+        return (state.IsName(CompleteStateName) && state.normalizedTime >= 1);
+    }
+
 
     internal void Init(Sprite sprite, Vector2 position)
     {

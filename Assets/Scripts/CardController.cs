@@ -8,12 +8,13 @@ using TMPro;
 using Cysharp.Threading.Tasks.CompilerServices;
 using NUnit.Framework.Internal;
 using static UnityEngine.GraphicsBuffer;
+using Unity.Collections.LowLevel.Unsafe;
 
 public class CardController : MonoBehaviour
 {
     [Header("First show cards")]
     [SerializeField] private float firstShowDelay = 1.0f;
-    [SerializeField] private float firstShowColumnDelay = 0.1f;
+    [SerializeField] private float firstShowRowDelay = 0.1f;
 
     [SerializeField] private Card cardPrefab;
     [SerializeField] private Sprite[] sprites;
@@ -36,12 +37,16 @@ public class CardController : MonoBehaviour
     public event Action<IEnumerable<Card>> CardsChecked;
 
 
-    private Card[,] _cards;
-    private Dictionary<(int, int), Vector2> _positionMatrix;
+    private List<Card>[,] _cardsInGrid;
+    private Dictionary<Card, Vector2Int> _cardsCoordinate;
+    private Dictionary<Vector2Int, Vector2> _positionMatrix;
+    private int _cardsCount;
+    private int _cardGroupCount;
     private float _matrixWidth;
     private float _matrixHeight;
     private List<Card> _remainingCards;
     private List<Card> _selectedCards;
+    private Queue<Sprite> _spritesQueue;
 
 
     private void Awake()
@@ -53,54 +58,91 @@ public class CardController : MonoBehaviour
     {
         ClearCards();
 
-
-        List<Sprite> possibleSpriteList = new List<Sprite>(sprites);
-        List<Sprite> totalSpritesOnBoard = new List<Sprite>();
-        int cardGroupCount = rows * columns / identicalCardsCount;
-
         _rows = rows;
         _columns = columns;
         _identicalCardsCount = identicalCardsCount;
-        _cards = new Card[rows, columns];
+        _cardsCount = rows * columns;
+        _cardGroupCount = _cardsCount / identicalCardsCount;
+        _matrixWidth = columns * columnDistance;
+        _matrixHeight = rows * rowDistance;
+
+        _cardsInGrid = new List<Card>[columns, rows];
+        _cardsCoordinate = new Dictionary<Card, Vector2Int>(_cardsCount);
         _selectedCards = new List<Card>();
-        _positionMatrix = new Dictionary<(int, int), Vector2>();
-        _matrixWidth = rows * rowDistance;
-        _matrixHeight = columns * columnDistance;
+        _positionMatrix = new Dictionary<Vector2Int, Vector2>();
         _remainingCards = new List<Card>();
+        _spritesQueue = GetQueueSprites(_cardsCount, _identicalCardsCount);
+
+        var totalSpritesOnBoard = GetQueueSprites(_cardsCount, _identicalCardsCount);
+
+        for (int y = 0; y < rows; y++)
+        {
+            for (int x = 0; x < columns; x++)
+            {
+                var sprite = totalSpritesOnBoard.Dequeue();
+                var cardPos = GetPosition(x, y);
+                var coordinate = new Vector2Int(x, y);
+                var card = CreateCard(sprite, cardPos);
+
+                _cardsInGrid[x, y] = new List<Card>(new Card[] { card });
+                _cardsCoordinate.Add(card, coordinate);
+
+                _positionMatrix.Add(coordinate, cardPos);
+            }
+        }
+
         CanInteract = false;
 
-        for (int i = 0; i < cardGroupCount; i++)
-        {
-            var randomCardIndex = UnityEngine.Random.Range(0, possibleSpriteList.Count);
-            for (int j = 0; j < identicalCardsCount; j++)
-            {
-                totalSpritesOnBoard.Add(possibleSpriteList[randomCardIndex]);
-            }
-            possibleSpriteList.RemoveAt(randomCardIndex);
-        }
-
-        for (int i = 0; i < rows; i++)
-        {
-            var posX = (rowDistance / 2 + rowDistance * i) - _matrixWidth / 2;
-            for (int j = 0; j < columns; j++)
-            {
-                var posY = (columnDistance / 2 + columnDistance * j) - _matrixHeight / 2;
-                var card = Instantiate(cardPrefab, transform);
-                var cardPos = new Vector2(posX, posY);
-                var randomCardIndex = UnityEngine.Random.Range(0, totalSpritesOnBoard.Count);
-
-                _positionMatrix.Add((i, j), cardPos);
-
-                card.Init(totalSpritesOnBoard[randomCardIndex], cardPos);
-                card.OnCardClicked += OnCardClicked;
-
-                totalSpritesOnBoard.RemoveAt(randomCardIndex);
-                _cards[i,j] = card;
-                _remainingCards.Add(card);
-            }
-        }
-
         ShowCardsFirstTime().Forget();
+    }
+
+    private Queue<Sprite> GetQueueSprites(int cardsCount, int identicalCards)
+    {
+        var cardGroups = cardsCount / identicalCards;
+        var spriteList = new List<Sprite>(sprites);
+        var totalSprites = new List<Sprite>(cardsCount);
+        var result = new Queue<Sprite>(cardsCount);
+
+        for (int i = 0; i < cardGroups; i++)
+        {
+            var randomCardIndex = UnityEngine.Random.Range(0, spriteList.Count);
+            for (int j = 0; j < identicalCards; j++)
+            {
+                totalSprites.Add(spriteList[randomCardIndex]);
+            }
+            spriteList.RemoveAt(randomCardIndex);
+        }
+
+        // randomize
+        for (int i = 0; i < cardsCount; i++)
+        {
+            var random = UnityEngine.Random.Range(0, totalSprites.Count);
+            result.Enqueue(totalSprites[random]);
+            totalSprites.RemoveAt(random);
+        }
+
+        return result;
+    }
+
+    private Card CreateCard(Sprite sprite, Vector2 position)
+    {
+        var card = Instantiate(cardPrefab, transform);
+
+        card.Init(sprite, position);
+        card.OnCardClicked += OnCardClicked;
+
+        _remainingCards.Add(card);
+
+        return card;
+    }
+
+
+    private Vector2 GetPosition(int x, int y)
+    {
+        var posX = (columnDistance / 2 + columnDistance * x) - _matrixWidth / 2;
+        var posY = (rowDistance / 2 + rowDistance * y) - _matrixHeight / 2;
+
+        return new Vector2(posX, posY);
     }
 
     private async UniTaskVoid ShowCardsFirstTime()
@@ -113,34 +155,35 @@ public class CardController : MonoBehaviour
 
         await CloseCards();
 
-        await ShuffleCards();
+        //await ShuffleCards();
 
         CanInteract = true;
         GameStarted?.Invoke();
-
     }
 
     private async UniTask OpenCards()
     {
-        for (int c = 0; c < _columns; c++)
+        for (int y = 0; y < _rows; y++)
         {
-            for (int r = 0; r < _rows; r++)
+            for (int x = 0; x < _columns; x++)
             {
-                _cards[r, c].Open();
+                var card = GetCard(x, y);
+                card?.Open();
             }
-            await UniTask.Delay((int)(firstShowColumnDelay * 1000f));
+            await UniTask.Delay((int)(firstShowRowDelay * 1000f));
         }
     }
 
     private async UniTask CloseCards()
     {
-        for (int c = 0; c < _columns; c++)
+        for (int y = 0; y < _rows; y++)
         {
-            for (int r = 0; r < _rows; r++)
+            for (int x = 0; x < _columns; x++)
             {
-                _cards[r, c].Close();
+                var card = GetCard(x, y);
+                card?.Close();
             }
-            await UniTask.Delay((int)(firstShowColumnDelay * 1000f));
+            await UniTask.Delay((int)(firstShowRowDelay * 1000f));
         }
     }
 
@@ -154,30 +197,40 @@ public class CardController : MonoBehaviour
         var firstKey = keys[firstRandomKeyIndex];
         int randomKeyIndex = firstRandomKeyIndex;
         var randomKey = keys[randomKeyIndex];
+        var nextCard = _cardsInGrid[randomKey.x, randomKey.y];
 
         while (keys.Count > 1)
         {
-            var movedCard = _cards[randomKey.Item1, randomKey.Item2];
+            var movedCardIndex = randomKey;
             keys.RemoveAt(randomKeyIndex);
 
             randomKeyIndex = UnityEngine.Random.Range(0, keys.Count);
             randomKey = keys[randomKeyIndex];
 
-            MoveCard(movedCard, randomKey, moveCardSpeed).Forget();
+            MoveCard(movedCardIndex, randomKey, moveCardSpeed).Forget();
 
-            Vector2 startPos = movedCard.transform.position;
-            Vector2 targetPos = _positionMatrix[randomKey];
-            float distance = (targetPos - startPos).magnitude;
-            var moveCardDuration = distance / moveCardSpeed;
+            //Vector2 startPos = movedCard.transform.position;
+            //Vector2 targetPos = _positionMatrix[randomKey];
+            //float distance = (targetPos - startPos).magnitude;
+            //var moveCardDuration = distance / moveCardSpeed;
 
-            await UniTask.Delay((int)(moveCardDuration / 16 * 1000f));
+            //await UniTask.Delay((int)(moveCardDuration / 16 * 1000f));
         }
 
-        await MoveCard(_cards[randomKey.Item1, randomKey.Item2],
-            firstKey, moveCardSpeed);
+        await MoveCard(randomKey, firstKey, moveCardSpeed);
     }
 
-    private async UniTask MoveCard(Card card, (int, int) target, float speed)
+    private UniTask MoveCard(Vector2Int cardIndex, Vector2Int target, float speed)
+    {
+        Card card = GetCard(cardIndex.x, cardIndex.y);
+        var task = MoveCard(card, target, speed);
+
+        _cardsInGrid[cardIndex.x, cardIndex.y].Remove(card);
+
+        return task;
+    }
+
+    private async UniTask MoveCard(Card card, Vector2Int target, float speed)
     {
         float timer = 0f;
         Vector2 startPos = card.transform.position;
@@ -193,32 +246,45 @@ public class CardController : MonoBehaviour
 
             card.transform.position = Vector3.Lerp(startPos, targetPos, timer / duration);
         }
+
+        _cardsCoordinate[card] = target;
+        _cardsInGrid[target.x, target.y].Add(card);
     }
 
     private void OnCardClicked(Card card)
     {
-        if (!CanInteract || _selectedCards.Contains(card)) return;
+        if (!CanInteract || _selectedCards.Contains(card)) 
+            return;
 
         _selectedCards.Add(card);
         card.Open();
         CardOpened?.Invoke(card);
 
-        if (_selectedCards.Count >= _identicalCardsCount)
+        if (_selectedCards.Count >= 2)
         {
-            CheckCards(_selectedCards, _selectedCards[0]);
+            CheckCards(_selectedCards.ToArray(), _selectedCards[0]);
         }
     }
 
-    private void CheckCards(IEnumerable<Card> cards, Card matchCard)
+    private void CheckCards(Card[] cards, Card matchCard)
     {
         var isIdentical = cards.All(card => card.HashCode == matchCard.HashCode);
 
         CanInteract = false;
-        CardsChecked?.Invoke(cards);
+        CardsChecked?.Invoke(cards);     
 
         if (isIdentical)
         {
-            CompleteCards(cards);
+            if (cards.Count() >= _identicalCardsCount)
+            {
+                CompleteCards(cards).Forget();
+            }
+            else
+            {
+                CanInteract = true;
+            }
+            CanInteract = true;
+
         }
         else
         {
@@ -249,17 +315,122 @@ public class CardController : MonoBehaviour
         }
     }
 
-
-    private void CompleteCards(IEnumerable<Card> cards)
+    public void OpenCards(float duration = 2)
     {
+        OpenCardAsync(duration).Forget();
+    }
+
+    private async UniTaskVoid OpenCardAsync(float duration)
+    {
+        await OpenCards();
+
+        await UniTask.Delay((int)(duration * 1000f));
+
+        await CloseCards();
+    }
+
+    //private void CompleteCards(IEnumerable<(int, int)> cardsIndex)
+    //{
+    //    foreach (var cardIndex in cardsIndex)
+    //    {
+    //        var cardList = _cards[cardIndex.Item1, cardIndex.Item2];
+    //        var last = _card
+    //        card.Complete();
+    //        card.OnCardClicked -= OnCardClicked;
+
+    //        _remainingCards.Remove(card);
+
+    //        Destroy(card.gameObject);
+    //    }
+
+    //    _selectedCards.Clear();
+
+    //    if (_remainingCards.Count > 0)
+    //    {
+    //        CanInteract = true;
+    //    }
+    //    else
+    //    {
+    //        OnGameFinished();
+    //    }
+
+    //}
+
+    //private void CompleteCard(Card card)
+    //{
+
+    //}
+
+
+    private async UniTaskVoid CompleteCards(Card[] cards)
+    {
+        List<Vector2Int> completedCards = new List<Vector2Int>();
+        HashSet<int> columnCompleted = new HashSet<int>();
+
+        var lastCard = cards.LastOrDefault();
+
         foreach (var card in cards)
         {
-            card.Complete();
+            var coord = _cardsCoordinate[card];
+
             card.OnCardClicked -= OnCardClicked;
 
             _remainingCards.Remove(card);
+            _cardsInGrid[coord.x, coord.y].Remove(card);
+
+            columnCompleted.Add(coord.x);
         }
 
+        CheckGameComplete();
+
+
+        await UniTask.WaitUntil(() => lastCard.IsOpened());
+
+        foreach (var card in cards)
+        {
+            card.Complete();
+        }
+
+        //await UniTask.Delay((int)(closeCardDelay * 1000f));
+
+        foreach (var card in cards)
+        {
+            await UniTask.WaitUntil(() => lastCard.IsComplete());
+            
+            Destroy(card.gameObject);
+        }
+
+        // Shift cards and create new on the top
+        ShiftCardsByColumn(columnCompleted);
+
+    }
+
+    private void ShiftCardsByColumn(IEnumerable<int> columns)
+    {
+        foreach (var collumn in columns)
+        {
+            var offset = ShiftCardsDown(collumn);
+
+            for (int i = 0; i < offset; i++)
+            {
+                var sprite = _spritesQueue.Dequeue();
+                var pos = GetPosition(collumn, _rows + i);
+                var card = CreateCard(sprite, pos);
+
+                MoveCard(card, new Vector2Int(collumn, _rows - offset + i), 6).Forget();
+                
+                _remainingCards.Add(card);
+
+                if (_spritesQueue.Count == 0)
+                {
+                    _spritesQueue = GetQueueSprites(_cardsCount, _identicalCardsCount);
+                }
+            }
+        }
+    }
+
+    private void CheckGameComplete()
+    {
         _selectedCards.Clear();
 
         if (_remainingCards.Count > 0)
@@ -270,6 +441,38 @@ public class CardController : MonoBehaviour
         {
             OnGameFinished();
         }
+    }
+
+    private int ShiftCardsDown(int collumn)
+    {
+        Card card = null;
+        int offset = 0;
+
+        for (int rowIndex = 0; rowIndex < _rows; rowIndex++)
+        {
+            card = GetCard(collumn, rowIndex);
+
+            if (card == null)
+            {
+                offset++;
+                continue;
+            }
+            if (offset < 0) 
+                continue;
+
+            MoveCard(new Vector2Int(collumn, rowIndex), new Vector2Int(collumn, rowIndex - offset), 6).Forget();
+        }
+
+        return offset;
+    }
+
+    private Card GetCard(int indexX, int indexY)
+    {
+        if (indexX < 0 || indexY < 0 || indexX >= _columns || indexY >= _rows)
+            return null;
+
+        var list = _cardsInGrid[indexX, indexY];
+        return list.Count - 1 >= 0 ? list[list.Count - 1] : null;
     }
 
     private void OnGameFinished()
@@ -285,27 +488,27 @@ public class CardController : MonoBehaviour
     //    }
     //}
 
-    private void SetPosition(Card card, int row, int column)
+    private void SetPosition(Card card, int x, int y)
     {
-        card.transform.position = _positionMatrix[(row, column)];
+        card.transform.position = _positionMatrix[new Vector2Int(x, y)];
     }
 
     private void ClearCards()
     {
-        if (_cards != null)
+        if (_cardsInGrid != null)
         {
-            int rows = _cards.GetLength(0);
-            int columns = _cards.GetLength(1);
-
-            for (int i = 0; i < rows; i++)
+            for (int y = 0; y < _rows; y++)
             {
-                for (int j = 0; j < columns; j++)
+                for (int x = 0; x < _columns; x++)
                 {
-                    Destroy(_cards[i, j].gameObject);
+                    for (int c = 0; c < _cardsInGrid[x, y].Count; c++)
+                    {
+                        Destroy(_cardsInGrid[x, y][c].gameObject);
+                    }
                 }
             }
 
-            _cards = null;
+            _cardsInGrid = null;
         }
     }
 }
