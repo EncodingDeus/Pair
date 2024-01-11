@@ -19,24 +19,14 @@ public class CardController : MonoBehaviour
     [SerializeField] private Card cardPrefab;
     [SerializeField] private Sprite[] sprites;
     [SerializeField] private float closeCardDelay = 0.5f;
-
-
+    
+    [SerializeField] private float rowDistance = 0.98f;
+    [SerializeField] private float columnDistance = 1.2f;
+    
     private int _rows = 4;
     private int _columns = 6;
     private int _identicalCardsCount = 2;
-
-    [SerializeField] private float rowDistance = 0.98f;
-    [SerializeField] private float columnDistance = 1.2f;
-
-
-    public bool CanInteract { get; private set; } = false;
-
-    public event Action GameStarted;
-    public event Action GameFinished;
-    public event Action<Card> CardOpened;
-    public event Action<IEnumerable<Card>> CardsChecked;
-
-
+    
     private List<Card>[,] _cardsInGrid;
     private Dictionary<Card, Vector2Int> _cardsCoordinate;
     private Dictionary<Vector2Int, Vector2> _positionMatrix;
@@ -47,13 +37,14 @@ public class CardController : MonoBehaviour
     private List<Card> _remainingCards;
     private List<Card> _selectedCards;
     private Queue<Sprite> _spritesQueue;
+    
+    public bool CanInteract { get; private set; } = false;
+    public event Action GameStarted;
+    public event Action GameFinished;
+    public event Action<Card> CardOpened;
+    public event Action<IEnumerable<Card>> CardsChecked;
 
-
-    private void Awake()
-    {
-        Application.targetFrameRate = 60;
-    }
-
+    
     public void Init(int rows = 4, int columns = 5, int identicalCardsCount = 2)
     {
         ClearCards();
@@ -147,7 +138,7 @@ public class CardController : MonoBehaviour
 
     private async UniTaskVoid ShowCardsFirstTime()
     {
-        await UniTask.Delay((int)(firstShowDelay * 1000f));
+        await UniTask.Delay((int)(1000f));
 
         await OpenCards();
 
@@ -397,11 +388,11 @@ public class CardController : MonoBehaviour
         {
             await UniTask.WaitUntil(() => lastCard.IsComplete());
             
-            Destroy(card.gameObject);
+            // Destroy(card.gameObject);
         }
 
         // Shift cards and create new on the top
-        ShiftCardsByColumn(columnCompleted);
+        // ShiftCardsByColumn(columnCompleted);
 
     }
 
@@ -477,6 +468,7 @@ public class CardController : MonoBehaviour
 
     private void OnGameFinished()
     {
+        Debug.Log("OnGameFinished");
         GameFinished?.Invoke();
     }
 
@@ -493,7 +485,7 @@ public class CardController : MonoBehaviour
         card.transform.position = _positionMatrix[new Vector2Int(x, y)];
     }
 
-    private void ClearCards()
+    public void ClearCards()
     {
         if (_cardsInGrid != null)
         {

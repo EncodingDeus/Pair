@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Default Local Group
+  m_EditorClassIdentifier: 
+  m_GroupName: Default Local Group
+  m_GUID: 925b2a3d2883f9549b3e88490d35128b
+  m_SerializeEntries:
+  - m_GUID: 4186f498520554e4e9d1f850c3f3b7bc
+    m_Address: Assets/UI/Form/StagesForm.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - default
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 15f65f857c5b6714993cb3a24fd92888
+    m_Address: Assets/UI/Form/GameForm.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - default
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b26807af913605249aaca8be397d1070
+    m_Address: Assets/UI/Form/LevelsForm.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - default
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: c8199a4cf57708f4698a9e76857674ed, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 8ce0d307809ea1f4fb62fe8ae072bf65, type: 2}
+    - {fileID: 11400000, guid: 787cf55626c9bb942928912b9ed6ada2, type: 2}

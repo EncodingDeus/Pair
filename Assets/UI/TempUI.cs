@@ -50,6 +50,8 @@ public class TempUI : MonoBehaviour
         });
 
         fovSlider.onValueChanged.AddListener(OnFovSliderChanged);
+
+        Time.timeScale = 1;
     }
 
     private void OnFovSliderChanged(float value)
