@@ -1,39 +1,30 @@
+using Cysharp.Threading.Tasks;
 using Dobrozaur.Manager;
 using Dobrozaur.UI.Form.Part;
+using Dobrozaur.Utility;
 using UI.Form;
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.AddressableAssets;
 
 namespace Dobrozaur.UI.Form
 {
     public class StagesForm : UIForm
     {
-        [SerializeField] private Button stageCard1;
-        [SerializeField] private Button stageCard2;
-
-        [SerializeField] private StageCard stagePrefab;
+        [SerializeField] private AssetReference<StageCard> stagePrefab;
         [SerializeField] private Transform stagesRoot;
+        [SerializeField] private AssetReferenceGameObject gg;
 
         private StageCard[] _stages;
 
-        
+
         public override void OnOpen(object userData)
         {
             base.OnOpen(userData);
 
-            InitStages();
-
-            // stageCard1.onClick.AddListener(() =>
-            // {
-            //     UIController.Instance.OpenStageLevelsForm((25, 25));
-            // });
-            // stageCard2.onClick.AddListener(() =>
-            // {
-            //     UIController.Instance.OpenStageLevelsForm((7, 25));
-            // });
+            InitStages().Forget();
         }
 
-        public void InitStages()
+        private async UniTaskVoid InitStages()
         {
             ClearStages();
 
@@ -42,7 +33,7 @@ namespace Dobrozaur.UI.Form
             for (int i = 0; i < GameManager.Instance.Stages.Length; i++)
             {
                 var stage = GameManager.Instance.Stages[i];
-                var stageCard = Instantiate(stagePrefab, stagesRoot);
+                var stageCard = await stagePrefab.InstantiateAsync(stagesRoot);
 
                 stageCard.Init(stage, UIManager);
                 _stages[i] = stageCard;
@@ -59,14 +50,6 @@ namespace Dobrozaur.UI.Form
             }
 
             _stages = null;
-        }
-
-        public override void OnClose(object userData)
-        {
-            base.OnClose(userData);
-
-            stageCard1.onClick.RemoveAllListeners();
-            stageCard2.onClick.RemoveAllListeners();
         }
     }
 }

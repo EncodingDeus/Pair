@@ -10,11 +10,6 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 
 public class ResourceManager : Manager
 {
-    public ResourceManager()
-    {
-        
-    }
-    
     public async UniTaskVoid Init()
     {
         var r = await Addressables.InitializeAsync();

@@ -33,6 +33,18 @@ MonoBehaviour:
     m_SerializedLabels:
     - default
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1a6f3c7d4b6a94f4e9b1ab84ec28dca3
+    m_Address: Assets/UI/StageCard.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - default
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: eecdb969e254b9d45bd9feca309327df
+    m_Address: Assets/UI/LevelItem.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - default
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: c8199a4cf57708f4698a9e76857674ed, type: 2}
   m_SchemaSet:

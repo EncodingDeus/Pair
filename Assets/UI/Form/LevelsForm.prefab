@@ -686,7 +686,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   backButton: {fileID: 2627240022983702130}
-  levelItemPrefab: {fileID: 8513304228523129833, guid: eecdb969e254b9d45bd9feca309327df, type: 3}
+  levelItemPrefab:
+    m_AssetGUID: eecdb969e254b9d45bd9feca309327df
+    m_SubObjectName: 
+    m_SubObjectGUID: 
+    m_SubObjectType: 
+    m_EditorAssetChanged: 0
   levelsRoot: {fileID: 2611159300577902478}
 --- !u!114 &2193519742090811527
 MonoBehaviour:

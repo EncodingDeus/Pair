@@ -1,7 +1,8 @@
 using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
 using Dobrozaur.Gameplay;
-using Dobrozaur.Manager;
 using Dobrozaur.UI.Form;
+using Dobrozaur.Utility;
 using UI.Form.Part;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,7 +14,7 @@ namespace UI.Form
         private readonly List<LevelItem> _levelItems = new List<LevelItem>();
         
         [SerializeField] private Button backButton;
-        [SerializeField] private LevelItem levelItemPrefab;
+        [SerializeField] private AssetReference<LevelItem> levelItemPrefab;
         [SerializeField] private Transform levelsRoot;
         
         
@@ -24,7 +25,7 @@ namespace UI.Form
             var levels = (Level[])userData;
             
             ClearLevels();
-            InitLevels(levels);
+            InitLevels(levels).Forget();
             
             backButton.onClick.AddListener(async () =>
             {
@@ -39,14 +40,14 @@ namespace UI.Form
             backButton.onClick.RemoveAllListeners();
         }
 
-        private void InitLevels(Level[] levels)
+        private async UniTask InitLevels(Level[] levels)
         {
             for (int i = 0; i < levels.Length; i++)
             {
-                var level = Instantiate(levelItemPrefab, levelsRoot);
+                var levelItem = await levelItemPrefab.InstantiateAsync(levelsRoot);
                 
-                level.Init(levels[i], UIManager);
-                _levelItems.Add(level);
+                levelItem.Init(levels[i], UIManager);
+                _levelItems.Add(levelItem);
             }
         }
 
