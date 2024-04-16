@@ -2,15 +2,17 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using UnityEngine;
 using Cysharp.Threading.Tasks;
 using TMPro;
 using Cysharp.Threading.Tasks.CompilerServices;
+using Dobrozaur.Gameplay;
 using NUnit.Framework.Internal;
 using static UnityEngine.GraphicsBuffer;
 using Unity.Collections.LowLevel.Unsafe;
 
-public class CardController : MonoBehaviour
+public class CardController : MonoBehaviour, IDisposable
 {
     [Header("First show cards")]
     [SerializeField] private float firstShowDelay = 1.0f;
@@ -26,7 +28,8 @@ public class CardController : MonoBehaviour
     private int _rows = 4;
     private int _columns = 6;
     private int _identicalCardsCount = 2;
-    
+
+    private CancellationTokenSource _cancellationTokenSource;
     private List<Card>[,] _cardsInGrid;
     private Dictionary<Card, Vector2Int> _cardsCoordinate;
     private Dictionary<Vector2Int, Vector2> _positionMatrix;
@@ -37,38 +40,47 @@ public class CardController : MonoBehaviour
     private List<Card> _remainingCards;
     private List<Card> _selectedCards;
     private Queue<Sprite> _spritesQueue;
+    private bool _canInteract;
+    private bool _isPause;
     
-    public bool CanInteract { get; private set; } = false;
+    public int Attempts { get; private set; }
+    public int Misses { get; private set; }
+    public bool CanInteract => _canInteract && !_isPause;
     public event Action GameStarted;
     public event Action GameFinished;
     public event Action<Card> CardOpened;
     public event Action<IEnumerable<Card>> CardsChecked;
 
     
-    public void Init(int rows = 4, int columns = 5, int identicalCardsCount = 2)
+    public void Init(Level.LevelSetting setting)
     {
         ClearCards();
+        
+        _rows = setting.Rows;
+        _columns = setting.Columns;
+        _identicalCardsCount = setting.IdenticalCards;
+        
+        _cardsCount = _rows * _columns;
+        _cardGroupCount = _cardsCount / _identicalCardsCount;
+        _matrixWidth = _columns * columnDistance;
+        _matrixHeight = _rows * rowDistance;
 
-        _rows = rows;
-        _columns = columns;
-        _identicalCardsCount = identicalCardsCount;
-        _cardsCount = rows * columns;
-        _cardGroupCount = _cardsCount / identicalCardsCount;
-        _matrixWidth = columns * columnDistance;
-        _matrixHeight = rows * rowDistance;
-
-        _cardsInGrid = new List<Card>[columns, rows];
+        _cancellationTokenSource = new CancellationTokenSource();
+        _cardsInGrid = new List<Card>[_columns, _rows];
         _cardsCoordinate = new Dictionary<Card, Vector2Int>(_cardsCount);
         _selectedCards = new List<Card>();
         _positionMatrix = new Dictionary<Vector2Int, Vector2>();
         _remainingCards = new List<Card>();
         _spritesQueue = GetQueueSprites(_cardsCount, _identicalCardsCount);
 
+        Attempts = 0;
+        Misses = 0;
+        
         var totalSpritesOnBoard = GetQueueSprites(_cardsCount, _identicalCardsCount);
 
-        for (int y = 0; y < rows; y++)
+        for (int y = 0; y < _rows; y++)
         {
-            for (int x = 0; x < columns; x++)
+            for (int x = 0; x < _columns; x++)
             {
                 var sprite = totalSpritesOnBoard.Dequeue();
                 var cardPos = GetPosition(x, y);
@@ -82,9 +94,10 @@ public class CardController : MonoBehaviour
             }
         }
 
-        CanInteract = false;
+        _isPause = false;
+        _canInteract = false;
 
-        ShowCardsFirstTime().Forget();
+        ShowCardsFirstTime(_cancellationTokenSource.Token).Forget();
     }
 
     private Queue<Sprite> GetQueueSprites(int cardsCount, int identicalCards)
@@ -136,45 +149,61 @@ public class CardController : MonoBehaviour
         return new Vector2(posX, posY);
     }
 
-    private async UniTaskVoid ShowCardsFirstTime()
+    private async UniTaskVoid ShowCardsFirstTime(CancellationToken cancellationToken)
     {
-        await UniTask.Delay((int)(1000f));
+        await UniTask.Delay(
+            millisecondsDelay:(int)1000f, 
+            cancellationToken: cancellationToken);
 
-        await OpenCards();
+        await OpenCards(cancellationToken);
 
-        await UniTask.Delay((int)(firstShowDelay * 1000f));
+        await UniTask.Delay(
+            millisecondsDelay:(int)(firstShowDelay * 1000f),
+            cancellationToken: cancellationToken);
 
-        await CloseCards();
+        await CloseCards(cancellationToken);
 
         //await ShuffleCards();
 
-        CanInteract = true;
+        _canInteract = true;
         GameStarted?.Invoke();
     }
 
-    private async UniTask OpenCards()
+    private async UniTask OpenCards(CancellationToken cancellationToken)
     {
         for (int y = 0; y < _rows; y++)
         {
             for (int x = 0; x < _columns; x++)
             {
+                if (cancellationToken.IsCancellationRequested)
+                    return;
+                
                 var card = GetCard(x, y);
                 card?.Open();
             }
-            await UniTask.Delay((int)(firstShowRowDelay * 1000f));
+            
+            await UniTask.Delay(
+                millisecondsDelay:(int)(firstShowRowDelay * 1000f),
+                cancellationToken: cancellationToken);
         }
     }
 
-    private async UniTask CloseCards()
+    private async UniTask CloseCards(CancellationToken cancellationToken)
     {
         for (int y = 0; y < _rows; y++)
         {
             for (int x = 0; x < _columns; x++)
             {
+                if (cancellationToken.IsCancellationRequested)
+                    return;
+
                 var card = GetCard(x, y);
                 card?.Close();
             }
-            await UniTask.Delay((int)(firstShowRowDelay * 1000f));
+            
+            await UniTask.Delay(
+                millisecondsDelay:(int)(firstShowRowDelay * 1000f),
+                cancellationToken: cancellationToken);
         }
     }
 
@@ -261,26 +290,30 @@ public class CardController : MonoBehaviour
     {
         var isIdentical = cards.All(card => card.HashCode == matchCard.HashCode);
 
-        CanInteract = false;
-        CardsChecked?.Invoke(cards);     
+        _canInteract = false;
 
         if (isIdentical)
         {
             if (cards.Count() >= _identicalCardsCount)
             {
+                Attempts++;
                 CompleteCards(cards).Forget();
             }
             else
             {
-                CanInteract = true;
+                _canInteract = true;
             }
-            CanInteract = true;
+            _canInteract = true;
 
         }
         else
         {
+            Attempts++;
+            Misses++;
             CloseCards(cards, closeCardDelay).Forget();
         }
+        
+        CardsChecked?.Invoke(cards);     
     }
 
     private async UniTaskVoid CloseCards(IEnumerable<Card> cards, float delay)
@@ -293,7 +326,7 @@ public class CardController : MonoBehaviour
         }
 
         _selectedCards.Clear();
-        CanInteract = true;
+        _canInteract = true;
     }
 
     private async UniTaskVoid OpenCards(IEnumerable<Card> cards, float delay)
@@ -308,16 +341,18 @@ public class CardController : MonoBehaviour
 
     public void OpenCards(float duration = 2)
     {
-        OpenCardAsync(duration).Forget();
+        OpenCardAsync(duration, _cancellationTokenSource.Token).Forget();
     }
 
-    private async UniTaskVoid OpenCardAsync(float duration)
+    private async UniTaskVoid OpenCardAsync(float duration, CancellationToken cancellationToken)
     {
-        await OpenCards();
+        await OpenCards(cancellationToken);
 
-        await UniTask.Delay((int)(duration * 1000f));
+        await UniTask.Delay(
+            millisecondsDelay:(int)(duration * 1000f),
+            cancellationToken: cancellationToken);
 
-        await CloseCards();
+        await CloseCards(cancellationToken);
     }
 
     //private void CompleteCards(IEnumerable<(int, int)> cardsIndex)
@@ -426,7 +461,7 @@ public class CardController : MonoBehaviour
 
         if (_remainingCards.Count > 0)
         {
-            CanInteract = true;
+            _canInteract = true;
         }
         else
         {
@@ -485,6 +520,11 @@ public class CardController : MonoBehaviour
         card.transform.position = _positionMatrix[new Vector2Int(x, y)];
     }
 
+    public void SetPause(bool pause)
+    {
+        _isPause = pause;
+    }
+
     public void ClearCards()
     {
         if (_cardsInGrid != null)
@@ -502,5 +542,11 @@ public class CardController : MonoBehaviour
 
             _cardsInGrid = null;
         }
+    }
+
+    public void Dispose()
+    {
+        _cancellationTokenSource.Cancel();
+        _cancellationTokenSource?.Dispose();
     }
 }

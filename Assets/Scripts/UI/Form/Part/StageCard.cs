@@ -32,7 +32,7 @@ namespace Dobrozaur.UI.Form.Part
 
         public void Init(Stage stage, UIManager uiManager)
         {
-            var completedLevels = stage.Levels.Count(l => l.IsCompleted);
+            var completedLevels = stage.Levels.Count(l => l.CompleteInfo?.IsCompleted ?? false);
 
             _uiManager = uiManager;
             stageText.text = $"{stage.StageNumber} этап";

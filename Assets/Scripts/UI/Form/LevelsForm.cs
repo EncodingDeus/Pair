@@ -29,6 +29,7 @@ namespace UI.Form
             
             backButton.onClick.AddListener(async () =>
             {
+                Close();
                 await UIManager.OpenUIFormAsync<StagesForm>();
             });
         }

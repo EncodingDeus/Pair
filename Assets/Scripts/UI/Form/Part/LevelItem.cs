@@ -22,14 +22,17 @@ namespace UI.Form.Part
         public void Init(Level level, UIManager uiManager)
         {
             _uiManager = uiManager;
-            text.text = level.Number.ToString();
+            text.text = level.Setting.Number.ToString();
             text.gameObject.SetActive(!level.IsLocked);
             lockImage.gameObject.SetActive(level.IsLocked);
             canvasGroup.alpha = level.IsLocked ? 0.3f : 1f ;
 
-            for (int i = 0; i < level.Stars; i++)
+            if (level.CompleteInfo != null)
             {
-                starsImages[i].gameObject.SetActive(true);
+                for (int i = 0; i < level.CompleteInfo.Stars; i++)
+                {
+                    starsImages[i].gameObject.SetActive(true);
+                }
             }
 
             if (!level.IsLocked)

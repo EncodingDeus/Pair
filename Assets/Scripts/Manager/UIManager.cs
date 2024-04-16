@@ -19,23 +19,27 @@ namespace Dobrozaur.Manager
         
         private ResourceManager _resourceManager;
         private UIForm.Factory _uiFactory;
+        private PoolObjectManager _poolObjectManager;
         
         private HashSet<UIForm> _openedUIForms;
         private Dictionary<UIForm, double> _uiFormsPool;
-        
+        private PoolGroup<object> _uiGroup;
         private Canvas _canvas;
 
 
         [Inject]
-        private void Constructor(ResourceManager resourceManager, UIForm.Factory uiFactory)
+        private void Constructor(ResourceManager resourceManager, UIForm.Factory uiFactory, PoolObjectManager poolObjectManager)
         {
             _resourceManager = resourceManager;
             _uiFactory = uiFactory;
+            _poolObjectManager = poolObjectManager;
             
             _openedUIForms = new HashSet<UIForm>(initialPoolCapacity);
             _uiFormsPool = new Dictionary<UIForm, double>(initialPoolCapacity);
             _canvas = GetComponentInChildren<Canvas>();
             _canvas.worldCamera = Camera.main;
+            
+            _uiGroup = _poolObjectManager.CreateGroup("UIForms", 64, 300);
         }
 
         private void Update()
@@ -54,6 +58,8 @@ namespace Dobrozaur.Manager
             var formInPool =
                 _uiFormsPool.FirstOrDefault(f => f.Key.GetType().Name == formName && f.Key.IsActive == false).Key;
 
+            // _uiGroup.GetFromBack<T>();
+            
             if (formInPool == null)
             {
                 uiForm = await _uiFactory.Create(path, _canvas.transform);
@@ -80,6 +86,8 @@ namespace Dobrozaur.Manager
             {
                 CloseUIForm(form, userData);
             }
+            
+            _uiGroup.AddObject(form);
         }
         
         public void CloseUIForm(UIForm form, object userData = null)

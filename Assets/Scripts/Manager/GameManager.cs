@@ -21,7 +21,7 @@ namespace Dobrozaur.Manager
             {
                 foreach (var level in stage.Levels)
                 {
-                    stars += level.Stars;
+                    stars += level.CompleteInfo?.Stars ?? 0;
                 }
             }
 

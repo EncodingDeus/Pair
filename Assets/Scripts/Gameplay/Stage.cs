@@ -17,7 +17,7 @@ namespace Dobrozaur.Gameplay
         {
             get
             {
-                return Levels.Sum(l => l.Stars);
+                return Levels.Sum(l => l.CompleteInfo?.Stars ?? 0);
             }
         }
 
@@ -40,7 +40,9 @@ namespace Dobrozaur.Gameplay
 
         private void OnLevelCompleted(Level level)
         {
-            var nextLevel = Levels.FirstOrDefault(l => l.Number == (level.Number + 1));
+            if (level.CompleteInfo.IsCompleted == false) return;
+            
+            var nextLevel = Levels.FirstOrDefault(l => l.Setting.Number == (level.Setting.Number + 1));
 
             if (nextLevel != null)
             {

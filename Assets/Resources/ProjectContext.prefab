@@ -76,7 +76,7 @@ MonoBehaviour:
   m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 100
   m_ScaleFactor: 1
-  m_ReferenceResolution: {x: 375, y: 720}
+  m_ReferenceResolution: {x: 501, y: 845}
   m_ScreenMatchMode: 0
   m_MatchWidthOrHeight: 1
   m_PhysicalUnit: 3
@@ -146,6 +146,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c70cd5bc001aa044c9d9aeee30934c19, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  initialPoolCapacity: 8
+  poolExpireTime: 300
 --- !u!1 &5073356417911454207
 GameObject:
   m_ObjectHideFlags: 0
