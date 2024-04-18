@@ -8,18 +8,21 @@ namespace Dobrozaur.Manager.GameState
     {
         private readonly UIManager _uiManager;
         private readonly NetworkManager _networkManager;
+        private readonly GameManager _gameManager;
 
-        public MainMenuState(UIManager uiManager, NetworkManager networkManager)
+        public MainMenuState(UIManager uiManager, NetworkManager networkManager, GameManager gameManager)
         {
             _uiManager = uiManager;
             _networkManager = networkManager;
+            _gameManager = gameManager;
         }
         
         public override void OnEnter(FSM fsm)
         {
             base.OnEnter(fsm);
 
-            _uiManager.OpenUIFormAsync<StagesForm>().Forget();
+            _gameManager.InitGames();
+            _uiManager.OpenUIFormAsync<StagesForm>(_gameManager.PairData).Forget();
             // _networkManager.Auth().Forget();
         }
     }

@@ -25,7 +25,7 @@ namespace Dobrozaur.Manager
         private Dictionary<UIForm, double> _uiFormsPool;
         private PoolGroup<object> _uiGroup;
         private Canvas _canvas;
-
+        private int _formLayer;
 
         [Inject]
         private void Constructor(ResourceManager resourceManager, UIForm.Factory uiFactory, PoolObjectManager poolObjectManager)
@@ -73,6 +73,7 @@ namespace Dobrozaur.Manager
             _openedUIForms.Add(uiForm);
             
             uiForm.OnInit(userData);
+            uiForm.SetLayer(_formLayer);
             uiForm.OnOpen(userData);
             
             return uiForm.GetComponent<T>();

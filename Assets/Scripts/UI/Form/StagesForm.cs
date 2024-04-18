@@ -1,4 +1,5 @@
 using Cysharp.Threading.Tasks;
+using Dobrozaur.Gameplay;
 using Dobrozaur.Manager;
 using Dobrozaur.UI.Form.Part;
 using Dobrozaur.Utility;
@@ -14,42 +15,47 @@ namespace Dobrozaur.UI.Form
         [SerializeField] private Transform stagesRoot;
         [SerializeField] private AssetReferenceGameObject gg;
 
-        private StageCard[] _stages;
+        private StageCard[] _stagesCard;
+        private PairData _pairData;
 
 
         public override void OnOpen(object userData)
         {
             base.OnOpen(userData);
 
-            InitStages().Forget();
+            _pairData ??= (PairData)userData;
+
+            InitStages(_pairData).Forget();
         }
 
-        private async UniTaskVoid InitStages()
+        private async UniTaskVoid InitStages(PairData pairData)
         {
             ClearStages();
 
-            _stages = new StageCard[GameManager.Instance.Stages.Length];
+            var stars = pairData.Stages.GetStars();
+            _pairData = pairData;
+            _stagesCard = new StageCard[pairData.Stages.Length];
 
-            for (int i = 0; i < GameManager.Instance.Stages.Length; i++)
+            for (int i = 0; i < pairData.Stages.Length; i++)
             {
-                var stage = GameManager.Instance.Stages[i];
+                var stage = pairData.Stages[i];
                 var stageCard = await stagePrefab.InstantiateAsync(stagesRoot);
 
-                stageCard.Init(stage, UIManager);
-                _stages[i] = stageCard;
+                stageCard.Init(stage, UIManager, stars);
+                _stagesCard[i] = stageCard;
             }
         }
 
         private void ClearStages()
         {
-            if (_stages == null) return;
+            if (_stagesCard == null) return;
 
-            for (int i = 0; i < _stages.Length; i++)
+            for (int i = 0; i < _stagesCard.Length; i++)
             {
-                Destroy(_stages[i].gameObject);
+                Destroy(_stagesCard[i].gameObject);
             }
 
-            _stages = null;
+            _stagesCard = null;
         }
     }
 }

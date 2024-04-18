@@ -30,14 +30,14 @@ namespace Dobrozaur.UI.Form.Part
 
         private UIManager _uiManager;
 
-        public void Init(Stage stage, UIManager uiManager)
+        public void Init(Stage stage, UIManager uiManager, int stars)
         {
             var completedLevels = stage.Levels.Count(l => l.CompleteInfo?.IsCompleted ?? false);
 
             _uiManager = uiManager;
             stageText.text = $"{stage.StageNumber} этап";
             levelsText.text = $"{completedLevels}/{stage.Levels.Length}";
-            starsText.text = $"{GameManager.Instance.GetStars()}/{stage.RequiredStars}";
+            starsText.text = $"{stars}/{stage.RequiredStars}";
             button.interactable = !stage.IsLocked;
             lockedPanel.SetActive(stage.IsLocked);
             

@@ -18,6 +18,7 @@ namespace Pair
         {
             Container.BindInterfacesAndSelfTo<ResourceManager>().AsSingle();
             Container.BindInterfacesAndSelfTo<NetworkManager>().AsSingle();
+            Container.BindInterfacesAndSelfTo<GameManager>().AsSingle();
             Container.BindInterfacesAndSelfTo<PoolObjectManager>().AsSingle();
             
             Container.BindFactory<string, Transform, UniTask<UIForm>, UIForm.Factory>()

@@ -13,6 +13,7 @@ namespace Dobrozaur.UI.Form
     public class GameForm : UIForm
     {
         [SerializeField] private Button backButton;
+        [SerializeField] private Button restartButton;
         [SerializeField] private GameProgress gameProgress;
         
         private Level _level;
@@ -41,6 +42,7 @@ namespace Dobrozaur.UI.Form
                 _level.Setting.CompleteSettings[3]);
             
             backButton.onClick.AddListener(OpenStages);
+            restartButton.onClick.AddListener(RestartGame);
         }
         
         public override void OnClose(object userData)
@@ -53,6 +55,7 @@ namespace Dobrozaur.UI.Form
             _cardController.CardsChecked -= OnCardsChecked;
 
             backButton.onClick.RemoveListener(OpenStages);
+            restartButton.onClick.RemoveListener(RestartGame);
         }
 
         public void RestartGame()

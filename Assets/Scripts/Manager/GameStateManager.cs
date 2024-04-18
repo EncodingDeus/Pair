@@ -8,20 +8,22 @@ namespace Dobrozaur.Manager
     {
         private readonly UIManager _uiManager;
         private readonly NetworkManager _networkManager;
-
+        private readonly GameManager _gameManager;
+        
         private readonly IState[] _states;
         private readonly FSM _gameFsm;
         
         
-        public GameStateManager(UIManager uiManager, NetworkManager networkManager)
+        public GameStateManager(UIManager uiManager, NetworkManager networkManager, GameManager gameManager)
         {
             _uiManager = uiManager;
             _networkManager = networkManager;
+            _gameManager = gameManager;
             
             _states = new IState[]
             {
                 new PreloadResourcesState(),
-                new MainMenuState(_uiManager, _networkManager),
+                new MainMenuState(_uiManager, _networkManager, gameManager),
             };
             _gameFsm = new FSM(_states);
         }
